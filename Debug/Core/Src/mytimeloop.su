@@ -1,0 +1,2 @@
+../Core/Src/mytimeloop.c:30:6:MYTIMELOOP_Init	24	static
+../Core/Src/mytimeloop.c:44:9:MYTIMELOOP_Run	16	static

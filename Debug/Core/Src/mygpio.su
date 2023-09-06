@@ -1,0 +1,2 @@
+../Core/Src/mygpio.c:22:6:MYGPIO_Init	24	static
+../Core/Src/mygpio.c:29:6:MYGPIO_PinState_Update	16	static

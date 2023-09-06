@@ -1,0 +1,47 @@
+/**
+  ******************************************************************************
+  * @file
+  * @author Willam.Favaro
+  * @date
+  * @brief
+  *
+  ******************************************************************************
+  * @note
+  *
+  *
+  *
+  ******************************************************************************
+  */
+
+//20230905 ver 1.00.010 ALM_RELE sono diventati GPIO_EXT da GPIO e attivano un interrupt che controlla FAULT_RELE e EXT_INT
+
+TO KNOW: HAL_I2C_AddrCallback(...)
+[SLAVE] W:
+	STATO_1: READ_REGISTER
+	STATO_2: READ_REGISTER
+[SLAVE] W+R:
+	STATO_1:
+	STATO_2: READ_REGISTER
+	STATO_3: WRITE_DATA
+
+//2020.09.01 ver 1.00.009 Aggiunto array CONTROL che permette di avere tutte le variabili utilizzate via I2C in un array
+
+TO KNOW: Il pin ALERT dell'INA233 non si resetta a meno che non vengono puliti i determinati bit di registro.
+Inviando il messaggio CLEAR_FAULTS si puo pulire i bit di stato e risolvere il problema,
+ma dato che questo tipo di messaggio non invia dati bisogna utilizzare HAL_I2C_Master_Transmit invece di HAL_I2C_Mem_Write.
+In questo modo:
+
+none = CLEAR_FAULTS; //meglio se none è globale
+HAL_I2C_Master_Transmit(&hi2c2, INA[2].Address, (uint8_t *)&none, sizeof(none), 1000);
+
+TO KNOW: Inviare all'INA il valore 2048 per la calibrazione vuol dire avere IIN = VSHUNT.
+Di conseguenza possiamo utilizzare il thrshold direttamente su VSHUNT in questo modo
+
+//2023.08.31 ver 1.00.007 Aggiunta il modulo ina233
+//2023.08.30 ver 1.00.006 Aggiunto i pin di FAULT_RELE si aggiornano con quelli di ALM_RELE
+//2023.08.30 ver 1.00.005 Aggiunto aggiornamento dell'indirizzo dell I2C1 in base ai pin del deepswitch
+//2023.08.30 ver 1.00.004 Aggiunto inizializzazione dei mygpio
+//2023.08.30 ver 1.00.003 Aggiunto il modulo mytimeloop
+//2023.08.30 ver 1.00.002 Aggiunto il modulo mytimer
+//2023.08.30 ver 1.00.001 Aggiunto il modulo mygpio per leggibilità
+//2023.08.30 ver 1.00.000 Aggiunto i pin allo .ioc file
