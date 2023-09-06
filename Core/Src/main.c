@@ -35,6 +35,13 @@ typedef enum
 	ALM_RELE_PinState 	= 0x02,
 	FAULT_RELE_PinState = 0x03,
 	CMD_RELE_PinState 	= 0x04,
+
+	INA1_VIN_UV_mV_LSB 	= 0x80,
+	INA1_VIN_UV_mV_MSB 	= 0x81,
+	INA1_VIN_OV_mV_LSB 	= 0x82,
+	INA1_VIN_OV_mV_MSB 	= 0x83,
+	INA1_IIN_OV_uV_LSB 	= 0x84,
+	INA1_IIN_OV_uV_MSB 	= 0x85,
 } CONTROL_Index;
 /* USER CODE END PTD */
 
@@ -62,8 +69,7 @@ MyGPIO EXT_INT;
 
 INA233 INA[INA233_SIZE];
 
-uint8_t CONTROL_1B[255];
-uint8_t CONTROL_2B[128];
+uint8_t CONTROL[255];
 
 TimeLoop INA_TimeLoop;
 
@@ -71,12 +77,9 @@ TimeLoop INA_TimeLoop;
 uint8_t i2c2_Data;
 
 //Per gestire HAL_I2C_AddrCallback(..)
+uint8_t rxcount;
+uint8_t txcount;
 uint8_t i2c1_Register;
-uint8_t i2c1_Data_1byte;
-uint8_t i2c1_Data_2byte;
-uint8_t i2c1_nData;
-uint8_t i2c1_State;
-uint8_t i2c1_Operation;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -151,9 +154,6 @@ int main(void)
   INA[1].VIN_UV_mV = 1000;
   INA[1].VIN_OV_mV = 2000;
 
-//  for(uint8_t i = 1; i < INA233_SIZE; i++)
-//	  INA233_WARN_LIMIT_Update(&INA[i]);
-
   for(uint8_t i = 1; i < INA233_SIZE; i++)
   {
 	  INA233_WARN_LIMIT_Update(&INA[i]);
@@ -174,7 +174,7 @@ int main(void)
 	  //Address update
 	  for(uint8_t i = 1; i < ADDRESS_SIZE; i++)
 		  MYGPIO_PinState_Update(&ADDRESS[i]);
-	  CONTROL_1B[ADDRESS_PinState] = (ADDRESS[1].PinState << 0) + (ADDRESS[2].PinState << 1) + (ADDRESS[3].PinState << 2);
+	  CONTROL[ADDRESS_PinState] = (ADDRESS[1].PinState << 0) + (ADDRESS[2].PinState << 1) + (ADDRESS[3].PinState << 2);
 	  MX_GPIO_I2C_OwnAddress1_Update(&hi2c1, ADDRESS[1].PinState, ADDRESS[2].PinState, ADDRESS[3].PinState);
 	  //Abilita la possibilità di rispondere in I2C
 	  HAL_I2C_EnableListen_IT(&hi2c1);
@@ -194,7 +194,7 @@ int main(void)
 	  //Comando Rele Update
 	  for(uint8_t i = 1; i < INA233_SIZE; i++)
 	  {
-		  CMD_RELE_Update(&CMD_RELE[i], i, CONTROL_1B[CMD_RELE_PinState]);
+		  CMD_RELE_Update(&CMD_RELE[i], i, CONTROL[CMD_RELE_PinState]);
 		  MYGPIO_PinState_Update(&CMD_RELE[i]);
 	  }
 
@@ -523,231 +523,58 @@ void CMD_RELE_Update(MyGPIO* Self, uint8_t Rele_IDNumber, uint8_t ReleControl)
 	uint8_t BitPosition = 1 << (Rele_IDNumber - 1);
 	Self->PinState = (BitPosition & ReleControl);
 }
-#if 1
-void HAL_I2C_AddrCallback_Restart()
+
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
 {
-	i2c1_Register = 0;
-	i2c1_Data_1byte = 0;
-	i2c1_Data_2byte = 0;
-	i2c1_Data_2byte = 0;
-	i2c1_nData = 0;
-	i2c1_State = 0;
-	i2c1_Operation = 0;
+	if (TransferDirection == I2C_DIRECTION_TRANSMIT)  // if the master wants to transmit the data
+	{
+		rxcount = 0;
+		HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&i2c1_Register, 1, I2C_FIRST_FRAME);
+	}
+	else
+	{
+		txcount = 0;
+		HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t *)&CONTROL[i2c1_Register + txcount], 1, I2C_FIRST_FRAME);
+	}
 }
 
-void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t transferDirection, uint16_t addressMatchCode)
+void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	if(hi2c == &hi2c1)
-	{
-		if (transferDirection == I2C_DIRECTION_TRANSMIT)
-		{
-			//STATO_1: [SLAVE] WRITE: READ_REGISTER + [SLAVE] READ: NONE
-			if(!i2c1_State)
-			{
-				if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, &i2c1_Register, sizeof(i2c1_Register), I2C_LAST_FRAME) != HAL_OK)
-				{
-					HAL_I2C_AddrCallback_Restart();
-				}
-				else
-				{
-					//READ REG
-					i2c1_State	= 1;
-					if(i2c1_Register) //WRITE
-					{
-						i2c1_Operation = 0;
-						i2c1_nData = (i2c1_Register >> 7) + 1;
-						i2c1_Register = (i2c1_Register & 0x7F);
-					}
-					else
-					{
-						i2c1_Operation = 1;
-					}
-				}
-			}
-			else
-			{
-				//STATO 2
-				if(i2c1_Operation)
-				{
-					if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, &i2c1_Register, sizeof(i2c1_Register), I2C_LAST_FRAME) != HAL_OK)
-					{
-						//RESTART
-						MX_I2C1_Init();
-						HAL_I2C_AddrCallback_Restart();
-					}
-					else
-					{
-						//READ REG
-						i2c1_State	= 1;
-						i2c1_nData = (i2c1_Register >> 7) + 1;
-						i2c1_Register = (i2c1_Register & 0x7F);
-					}
-				}
-				else //WRITE DATA
-				{
-					if(i2c1_nData == 1)
-					{
-						//DATA 1 BYTE
-						if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&i2c1_Data_1byte, sizeof(i2c1_Data_1byte), I2C_LAST_FRAME) != HAL_OK)
-						{
-							//RESTART
-							MX_I2C1_Init();
-							HAL_I2C_AddrCallback_Restart();
-						}
-						else
-						{
-							CONTROL_1B[i2c1_Register] 	= i2c1_Data_1byte;
-							HAL_I2C_AddrCallback_Restart();
-						}
-					}
-					else if(i2c1_nData == 2)
-					{
-						//DATA 2 BYTE
-						if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&i2c1_Data_2byte, 2, I2C_LAST_FRAME) != HAL_OK)
-						{
-							//RESTART
-							MX_I2C1_Init();
-							HAL_I2C_AddrCallback_Restart();
-						}
-						else
-						{
-							i2c1_nData = 1;
-//							HAL_I2C_AddrCallback_Restart();
-							//CONTROL_1B[i2c1_Register + 1] 	= i2c1_Data_1byte;
-						}
-					}
-				}
-			}
-		}
-		else
-		{
-			//STATO 3
-			if(i2c1_nData == 1)
-			{
-				if(HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &CONTROL_1B[i2c1_Register], 1, I2C_LAST_FRAME) != HAL_OK)
-				{
-					//RESTART
-					MX_I2C1_Init();
-					HAL_I2C_AddrCallback_Restart();
-				}
-				else
-				{
-					HAL_I2C_AddrCallback_Restart();
-				}
-			}
-			else if(i2c1_nData == 2)
-			{
-				if(HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &CONTROL_2B[i2c1_Register], 2, I2C_LAST_FRAME) != HAL_OK)
-				{
-					//RESTART
-					MX_I2C1_Init();
-					HAL_I2C_AddrCallback_Restart();
-				}
-				else
-				{
-					HAL_I2C_AddrCallback_Restart();
-				}
-			}
-//			//STATO_3: [SLAVE] READ: READ_DATA
-//			if(HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &CONTROL_1B[i2c1_Data_1byte], 1, I2C_LAST_FRAME) != HAL_OK)
-//			{
-//				MX_I2C1_Init();
-//				i2c1_Register 	= 0;
-//				i2c1_Data_1byte 		= 0;
-//				i2c1_State	= 0;
-//			}
-//			else
-//			{
-//				i2c1_Register 	= 0;
-//				i2c1_Data_1byte 		= 0;
-//				i2c1_State	= 0;
-//			}
-		}
-	}
+	txcount++;
+	HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t *)&CONTROL[i2c1_Register + txcount], 1, I2C_NEXT_FRAME);
 }
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&i2c1_Data_2byte, 2, I2C_LAST_FRAME) != HAL_OK)
-	{
-		//RESTART
-		MX_I2C1_Init();
-		HAL_I2C_AddrCallback_Restart();
-	}
-	else
-	{
-		i2c1_nData = 1;
-//							HAL_I2C_AddrCallback_Restart();
-		//CONTROL_1B[i2c1_Register + 1] 	= i2c1_Data_1byte;
-	}
+	HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&CONTROL[i2c1_Register + rxcount], 1, I2C_NEXT_FRAME);
+	rxcount++;
 }
-
-#else
-void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t transferDirection, uint16_t addressMatchCode)
-{
-	if(hi2c == &hi2c1)
-	{
-		if (transferDirection == I2C_DIRECTION_RECEIVE)
-		{
-			//STATO_3: [SLAVE] READ: READ_DATA
-			if(HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &CONTROL_1B[i2c1_Data_1byte], 1, I2C_LAST_FRAME) != HAL_OK)
-			{
-				MX_I2C1_Init();
-				i2c1_Register 	= 0;
-				i2c1_Data_1byte 		= 0;
-				i2c1_State	= 0;
-			}
-			else
-			{
-				i2c1_Register 	= 0;
-				i2c1_Data_1byte 		= 0;
-				i2c1_State	= 0;
-			}
-		}
-		else
-		{
-			//STATO_1: [SLAVE] WRITE: READ_REGISTER + [SLAVE] READ: NONE
-			if(!i2c1_State)
-			{
-				if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, &i2c1_Register, 1, I2C_LAST_FRAME) != HAL_OK)
-				{
-					MX_I2C1_Init();
-					i2c1_Register 	= 0;
-					i2c1_Data 		= 0;
-					i2c1_IsWriting	= 0;
-				}
-				else
-				{
-					i2c1_State	= 1;
-				}
-			}
-			else
-			{
-				//STATO_2: [SLAVE] WRITE: READ_REGISTER + [SLAVE] READ: READ_DATA
-				if(HAL_I2C_Slave_Seq_Receive_IT(hi2c, &i2c1_Data, 1, I2C_LAST_FRAME) != HAL_OK)
-				{
-					MX_I2C1_Init();
-					i2c1_Register 	= 0;
-					i2c1_Data_1byte 		= 0;
-					i2c1_IsWriting	= 0;
-				}
-				else
-				{
-					CONTROL_1B[i2c1_Register] 	= i2c1_Data;
-
-					i2c1_Data 		= 0;
-					i2c1_IsWriting	= 0;
-				}
-
-			}
-		}
-	}
-}
-#endif
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    HAL_I2C_EnableListen_IT(hi2c);
+	HAL_I2C_EnableListen_IT(hi2c);
+}
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+{
+	if (HAL_I2C_GetError(hi2c) == 0x04)  // AF error
+	{
+
+	}
+
+	/* BERR Error commonly occurs during the Direction switch
+	 * Here we the software reset bit is set by the HAL error handler
+	 * Before resetting this bit, we make sure the I2C lines are released and the bus is free
+	 * I am simply reinitializing the I2C to do so
+	 */
+	else if (HAL_I2C_GetError(hi2c) == 0x01)  // BERR Error
+	{
+		HAL_I2C_DeInit(hi2c);
+		HAL_I2C_Init(hi2c);
+		rxcount = 0;  // reset the count
+	}
+
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -759,10 +586,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		MYGPIO_PinState_Update(&FAULT_RELE[i]);
 	}
 
-	CONTROL_1B[ALM_RELE_PinState] = (ALM_RELE[1].PinState << 0) + (ALM_RELE[2].PinState << 1) + (ALM_RELE[3].PinState << 2) + (ALM_RELE[4].PinState << 3);
-	CONTROL_1B[FAULT_RELE_PinState] = (FAULT_RELE[1].PinState << 0) + (FAULT_RELE[2].PinState << 1) + (FAULT_RELE[3].PinState << 2) + (FAULT_RELE[4].PinState << 3);
+	CONTROL[ALM_RELE_PinState] = (ALM_RELE[1].PinState << 0) + (ALM_RELE[2].PinState << 1) + (ALM_RELE[3].PinState << 2) + (ALM_RELE[4].PinState << 3);
+	CONTROL[FAULT_RELE_PinState] = (FAULT_RELE[1].PinState << 0) + (FAULT_RELE[2].PinState << 1) + (FAULT_RELE[3].PinState << 2) + (FAULT_RELE[4].PinState << 3);
 
-	EXT_INT.PinState = !(CONTROL_1B[ALM_RELE_PinState]);
+	EXT_INT.PinState = !(CONTROL[ALM_RELE_PinState]);
 	MYGPIO_PinState_Update(&EXT_INT);
 }
 /* USER CODE END 4 */

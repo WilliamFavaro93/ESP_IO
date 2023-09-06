@@ -12,19 +12,11 @@
   *
   ******************************************************************************
   */
+//20200901 ver 1.00.011 Posso essere scritti e eletti piu bit
 
 //20230905 ver 1.00.010 ALM_RELE sono diventati GPIO_EXT da GPIO e attivano un interrupt che controlla FAULT_RELE e EXT_INT
 
-TO KNOW: HAL_I2C_AddrCallback(...)
-[SLAVE] W:
-	STATO_1: READ_REGISTER
-	STATO_2: READ_REGISTER
-[SLAVE] W+R:
-	STATO_1:
-	STATO_2: READ_REGISTER
-	STATO_3: WRITE_DATA
-
-//2020.09.01 ver 1.00.009 Aggiunto array CONTROL che permette di avere tutte le variabili utilizzate via I2C in un array
+//20200901 ver 1.00.009 Aggiunto array CONTROL che permette di avere tutte le variabili utilizzate via I2C in un array
 
 TO KNOW: Il pin ALERT dell'INA233 non si resetta a meno che non vengono puliti i determinati bit di registro.
 Inviando il messaggio CLEAR_FAULTS si puo pulire i bit di stato e risolvere il problema,
