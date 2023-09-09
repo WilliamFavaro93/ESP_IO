@@ -31,17 +31,47 @@
 /* USER CODE BEGIN PTD */
 typedef enum
 {
+	//000XXXXX
 	ADDRESS_PinState 	= 0x01,
 	ALM_RELE_PinState 	= 0x02,
 	FAULT_RELE_PinState = 0x03,
 	CMD_RELE_PinState 	= 0x04,
-
+	//100XXXXX: INA1 (0x80)
 	INA1_VIN_UV_mV_LSB 	= 0x80,
 	INA1_VIN_UV_mV_MSB 	= 0x81,
 	INA1_VIN_OV_mV_LSB 	= 0x82,
 	INA1_VIN_OV_mV_MSB 	= 0x83,
 	INA1_IIN_OV_uV_LSB 	= 0x84,
-	INA1_IIN_OV_uV_MSB 	= 0x85,
+	INA1_IIN_OV_uV_XXB	= 0x85,
+	INA1_IIN_OV_uV_MSB 	= 0x86,
+	INA1_ASSIGN_WARN_LIMIT = 0x87,
+	//101XXXXX: INA2 (0xA0)
+	INA2_VIN_UV_mV_LSB 	= 0xA0,
+	INA2_VIN_UV_mV_MSB 	= 0xA1,
+	INA2_VIN_OV_mV_LSB 	= 0xA2,
+	INA2_VIN_OV_mV_MSB 	= 0xA3,
+	INA2_IIN_OV_uV_LSB 	= 0xA4,
+	INA2_IIN_OV_uV_XXB	= 0xA5,
+	INA2_IIN_OV_uV_MSB 	= 0xA6,
+	INA2_ASSIGN_WARN_LIMIT = 0xA7,
+	//101XXXXX: INA2 (0xC0)
+	INA3_VIN_UV_mV_LSB 	= 0xC0,
+	INA3_VIN_UV_mV_MSB 	= 0xC1,
+	INA3_VIN_OV_mV_LSB 	= 0xC2,
+	INA3_VIN_OV_mV_MSB 	= 0xC3,
+	INA3_IIN_OV_uV_LSB 	= 0xC4,
+	INA3_IIN_OV_uV_XXB	= 0x85,
+	INA3_IIN_OV_uV_MSB 	= 0xC6,
+	INA3_ASSIGN_WARN_LIMIT = 0xC7,
+	//111XXXXX: INA2 (0xE0)
+	INA4_VIN_UV_mV_LSB 	= 0xE0,
+	INA4_VIN_UV_mV_MSB 	= 0xE1,
+	INA4_VIN_OV_mV_LSB 	= 0xE2,
+	INA4_VIN_OV_mV_MSB 	= 0xE3,
+	INA4_IIN_OV_uV_LSB 	= 0xE4,
+	INA4_IIN_OV_uV_XXB	= 0x85,
+	INA4_IIN_OV_uV_MSB 	= 0xE6,
+	INA4_ASSIGN_WARN_LIMIT = 0xC7,
 } CONTROL_Index;
 /* USER CODE END PTD */
 
@@ -49,6 +79,7 @@ typedef enum
 /* USER CODE BEGIN PD */
 #define INA233_SIZE		5
 #define ADDRESS_SIZE	4
+#define CONTROL_SIZE	256
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,7 +100,7 @@ MyGPIO EXT_INT;
 
 INA233 INA[INA233_SIZE];
 
-uint8_t CONTROL[255];
+uint8_t CONTROL[CONTROL_SIZE];
 
 TimeLoop INA_TimeLoop;
 
@@ -149,19 +180,32 @@ int main(void)
   //Esempio di aggiornamento warn limit
   INA[2].VIN_UV_mV = 1000;
   INA[2].VIN_OV_mV = 2000;
-  INA[2].IIN_OV_uV = 80000;
 
   INA[1].VIN_UV_mV = 1000;
   INA[1].VIN_OV_mV = 2000;
 
   for(uint8_t i = 1; i < INA233_SIZE; i++)
   {
-	  INA233_WARN_LIMIT_Update(&INA[i]);
+	  i2c2_Data = RESTORE_DEFAULT_ALL;
+	  HAL_I2C_Master_Transmit(&hi2c2, INA[i].Address, (uint8_t *)&i2c2_Data, 1, 1000);
+
+	  INA233_WARN_LIMIT_Conversion(&INA[i]);
 
 	  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, MFR_CALIBRATION, 1, (uint8_t *)&INA[i].Calibration, 2, 1000);
 	  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, VIN_UV_WARN_LIMIT, 1, (uint8_t *)&INA[i].VIN_UV, 2, 1000);
 	  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, VIN_OV_WARN_LIMIT, 1, (uint8_t *)&INA[i].VIN_OV, 2, 1000);
 	  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, IOUT_OC_WARN_LIMIT, 1, (uint8_t *)&INA[i].IIN_OV, 2, 1000);
+  }
+
+  // CONTROL_Init()
+  for(uint8_t i = 1; i < INA233_SIZE; i++)
+  {
+	  CONTROL[INA1_VIN_UV_mV_LSB + 0x20 *(i - 1)] = (INA[i].VIN_UV_mV & 0x00FF);
+	  CONTROL[INA1_VIN_UV_mV_MSB + 0x20 *(i - 1)] = (INA[i].VIN_UV_mV & 0xFF00);
+	  CONTROL[INA1_VIN_OV_mV_LSB + 0x20 *(i - 1)] = (INA[i].VIN_OV_mV & 0x00FF);
+	  CONTROL[INA1_VIN_OV_mV_MSB + 0x20 *(i - 1)] = (INA[i].VIN_OV_mV & 0xFF00);
+	  CONTROL[INA1_IIN_OV_uV_LSB + 0x20 *(i - 1)] = (INA[i].IIN_OV_uV & 0x00FF);
+	  CONTROL[INA1_IIN_OV_uV_MSB + 0x20 *(i - 1)] = (INA[i].IIN_OV_uV & 0xFF00);
   }
 
   MYTIMELOOP_Init(&INA_TimeLoop, 500, uwTick);
@@ -181,21 +225,48 @@ int main(void)
 
 #if 0
 	  //Alarm - Fault Rele Update
-	  for(uint8_t i = 1; i < INA233_SIZE; i++)
-	  {
-		  MYGPIO_PinState_Update(&ALM_RELE[i]);
-		  FAULT_RELE[i].PinState = ALM_RELE[i].PinState;
-		  MYGPIO_PinState_Update(&FAULT_RELE[i]);
-	  }
-	  CONTROL_1B[ALM_RELE_PinState] = (ALM_RELE[1].PinState << 0) + (ALM_RELE[2].PinState << 1) + (ALM_RELE[3].PinState << 2) + (ALM_RELE[4].PinState << 3);
-	  CONTROL_1B[FAULT_RELE_PinState] = (FAULT_RELE[1].PinState << 0) + (FAULT_RELE[2].PinState << 1) + (FAULT_RELE[3].PinState << 2) + (FAULT_RELE[4].PinState << 3);
+		for(uint8_t i = 1; i < INA233_SIZE; i++)
+		{
+			MYGPIO_PinState_Update(&ALM_RELE[i]);
+			FAULT_RELE[i].PinState = !(ALM_RELE[i].PinState);
+			MYGPIO_PinState_Update(&FAULT_RELE[i]);
+		}
+
+		CONTROL[ALM_RELE_PinState] = (ALM_RELE[1].PinState << 0) + (ALM_RELE[2].PinState << 1) + (ALM_RELE[3].PinState << 2) + (ALM_RELE[4].PinState << 3);
+		CONTROL[FAULT_RELE_PinState] = (FAULT_RELE[1].PinState << 0) + (FAULT_RELE[2].PinState << 1) + (FAULT_RELE[3].PinState << 2) + (FAULT_RELE[4].PinState << 3);
+
+		EXT_INT.PinState = !(CONTROL[ALM_RELE_PinState]);
+		MYGPIO_PinState_Update(&EXT_INT);
 #endif
 
-	  //Comando Rele Update
+	  //CMD_RELE_Update
 	  for(uint8_t i = 1; i < INA233_SIZE; i++)
 	  {
 		  CMD_RELE_Update(&CMD_RELE[i], i, CONTROL[CMD_RELE_PinState]);
 		  MYGPIO_PinState_Update(&CMD_RELE[i]);
+	  }
+
+	  //INA_WARN_LIMIT_Update()
+	  for(uint8_t i = 1; i < INA233_SIZE; i++)
+	  {
+		  if(CONTROL[INA1_ASSIGN_WARN_LIMIT + 0x20 * (i - 1)])
+		  {
+			  INA[i].VIN_UV_mV = (CONTROL[INA1_VIN_UV_mV_MSB + 0x20 * (i - 1)] << 8) + (CONTROL[INA1_VIN_UV_mV_LSB + 0x20 * (i - 1)] << 0);
+			  INA[i].VIN_OV_mV = (CONTROL[INA1_VIN_OV_mV_MSB + 0x20 * (i - 1)] << 8) + (CONTROL[INA1_VIN_OV_mV_LSB + 0x20 * (i - 1)] << 0);
+			  INA[i].IIN_OV_uV = (CONTROL[INA1_IIN_OV_uV_MSB + 0x20 * (i - 1)] << 8) + (CONTROL[INA1_IIN_OV_uV_XXB + 0x20 * (i - 1)] << 8) +(CONTROL[INA1_IIN_OV_uV_LSB + 0x20 * (i - 1)] << 0);
+
+			  i2c2_Data = RESTORE_DEFAULT_ALL;
+			  HAL_I2C_Master_Transmit(&hi2c2, INA[i].Address, (uint8_t *)&i2c2_Data, 1, 1000);
+
+			  INA233_WARN_LIMIT_Conversion(&INA[i]);
+
+			  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, MFR_CALIBRATION, 1, (uint8_t *)&INA[i].Calibration, 2, 1000);
+			  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, VIN_UV_WARN_LIMIT, 1, (uint8_t *)&INA[i].VIN_UV, 2, 1000);
+			  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, VIN_OV_WARN_LIMIT, 1, (uint8_t *)&INA[i].VIN_OV, 2, 1000);
+			  HAL_I2C_Mem_Write(&hi2c2, INA[i].Address, IOUT_OC_WARN_LIMIT, 1, (uint8_t *)&INA[i].IIN_OV, 2, 1000);
+
+			  CONTROL[INA1_ASSIGN_WARN_LIMIT + 0x20 * (i - 1)] = 0;
+		  }
 	  }
 
 	  if(MYTIMELOOP_Run(&INA_TimeLoop, uwTick))
@@ -547,6 +618,7 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 	HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)&CONTROL[i2c1_Register + rxcount], 1, I2C_NEXT_FRAME);
+
 	rxcount++;
 }
 
@@ -589,7 +661,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	CONTROL[ALM_RELE_PinState] = (ALM_RELE[1].PinState << 0) + (ALM_RELE[2].PinState << 1) + (ALM_RELE[3].PinState << 2) + (ALM_RELE[4].PinState << 3);
 	CONTROL[FAULT_RELE_PinState] = (FAULT_RELE[1].PinState << 0) + (FAULT_RELE[2].PinState << 1) + (FAULT_RELE[3].PinState << 2) + (FAULT_RELE[4].PinState << 3);
 
-	EXT_INT.PinState = !(CONTROL[ALM_RELE_PinState]);
+	EXT_INT.PinState = !(CONTROL[FAULT_RELE_PinState]);
 	MYGPIO_PinState_Update(&EXT_INT);
 }
 /* USER CODE END 4 */

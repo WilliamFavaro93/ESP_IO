@@ -12,11 +12,21 @@
   *
   ******************************************************************************
   */
-//20200901 ver 1.00.011 Posso essere scritti e eletti piu bit
+  
+//20230907 ver 1.00.012 E' possibile modificare i warn limit sovrascrivendoli prima sul CONTROL e inviando il comando INA_ASSIGN_WARN_LIMIT.
+
+TOKNOW: Un esempio utilizzato nei test è stato inviare i seguenti messaggi I2C_SLAVE:
+
+Write to Address: 0x44, Register: 0xC0, Data: 1000d
+Write to Address: 0x44, Register: 0xC2, Data: 2000d
+Write to Address: 0x44, Register: 0xC4, Data: 80000d
+Write to Address: 0x44, Register: 0xC7, Data: 0x01
+
+//20230906 ver 1.00.011 Posso essere scritti e letti piu byte direttamente sull'array CONTROL via I2C
 
 //20230905 ver 1.00.010 ALM_RELE sono diventati GPIO_EXT da GPIO e attivano un interrupt che controlla FAULT_RELE e EXT_INT
 
-//20200901 ver 1.00.009 Aggiunto array CONTROL che permette di avere tutte le variabili utilizzate via I2C in un array
+//20230901 ver 1.00.009 Aggiunto array CONTROL che permette di avere tutte le variabili utilizzate via I2C in un array
 
 TO KNOW: Il pin ALERT dell'INA233 non si resetta a meno che non vengono puliti i determinati bit di registro.
 Inviando il messaggio CLEAR_FAULTS si puo pulire i bit di stato e risolvere il problema,

@@ -1,8 +1,9 @@
 ../Core/Src/ina233.c:27:10:_Conversion	3
 ../Core/Src/ina233.c:40:6:INA233_Init	1
-../Core/Src/ina233.c:53:6:INA233_WARN_LIMIT_Update	1
+../Core/Src/ina233.c:53:6:INA233_WARN_LIMIT_Conversion	1
 ../Core/Src/ina233.c:60:6:INA233_VIN_Conversion	1
 ../Core/Src/ina233.c:65:6:INA233_VIN_UV_mV_Conversion	1
 ../Core/Src/ina233.c:70:6:INA233_VIN_OV_mV_Conversion	1
 ../Core/Src/ina233.c:75:6:INA233_IIN_Conversion	1
 ../Core/Src/ina233.c:80:6:INA233_IIN_OV_uV_Conversion	1
+../Core/Src/ina233.c:85:6:INA233_Update	1

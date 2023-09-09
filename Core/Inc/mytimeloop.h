@@ -17,6 +17,10 @@
 #ifndef INC_MYTIMELOOP_H_
 #define INC_MYTIMELOOP_H_
 
+/** @defgroup MYTIMELOOP MYTIMELOOP
+  * @{
+  */
+
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 /* Defines -------------------------------------------------------------------*/
@@ -31,12 +35,6 @@ typedef struct
 /* Public Function -----------------------------------------------------------*/
 /* Public Function definition ------------------------------------------------*/
 void MYTIMELOOP_Init(TimeLoop* Self, uint16_t SpanTime, uint32_t ActualTime);
-/*
- * @brief
- * @author William Favaro
- * @date 15/09/2022
- * @note
- */
 uint8_t MYTIMELOOP_Run(TimeLoop* Self, uint32_t ActualTime);
 
 #endif /* INC_MYTIMELOOP_H_ */

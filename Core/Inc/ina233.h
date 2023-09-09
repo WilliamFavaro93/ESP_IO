@@ -111,7 +111,7 @@ typedef struct
 
 
 void INA233_Init(INA233* Self, uint16_t Address);
-void INA233_WARN_LIMIT_Update(INA233* Self);
+void INA233_WARN_LIMIT_Conversion(INA233* Self);
 void INA233_VIN_Conversion(INA233* Self);
 void INA233_VIN_UV_mV_Conversion(INA233* Self);
 void INA233_VIN_OV_mV_Conversion(INA233* Self);
