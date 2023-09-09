@@ -43,10 +43,13 @@ void MYTIMELOOP_Init(TimeLoop* Self, uint16_t SpanTime, uint32_t ActualTime)
  */
 uint8_t MYTIMELOOP_Run(TimeLoop* Self, uint32_t ActualTime)
 {
-	if((ActualTime - Self->_LastRunTime) > Self->_SpanTime)
+	if(Self->_Enable)
 	{
-		Self->_LastRunTime += Self->_SpanTime;
-		return 1;
+		if((ActualTime - Self->_LastRunTime) > Self->_SpanTime)
+		{
+			Self->_LastRunTime += Self->_SpanTime;
+			return 1;
+		}
 	}
 	return 0;
 }
