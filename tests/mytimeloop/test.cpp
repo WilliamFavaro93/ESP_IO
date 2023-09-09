@@ -21,7 +21,7 @@ TEST_GROUP(average_test_group)
 // Test null array
 TEST(average_test_group, no_init_test)
 {
-    MyTimeLoop mytimeloop;
+    TimeLoop mytimeloop;
 //   MYTIMELOOP_Init(&timeloop, 500, 200);
     mytimeloop._LastRunTime += 500;
     CHECK_EQUAL(MYTIMELOOP_Run(), 0);
@@ -30,7 +30,7 @@ TEST(average_test_group, no_init_test)
 // Test the average function
 TEST(average_test_group, simple_test)
 {
-    MyTimeLoop mytimeloop;
+    TimeLoop mytimeloop;
     MYTIMELOOP_Init(&mytimeloop, 500, 200);
     mytimeloop._LastRunTime += 500;
     CHECK_EQUAL(MYTIMELOOP_Run(), 1);
@@ -39,7 +39,7 @@ TEST(average_test_group, simple_test)
 // Test null array
 TEST(average_test_group, null_test)
 {
-    MyTimeLoop mytimeloop;
+    TimeLoop mytimeloop;
     MYTIMELOOP_Init(&mytimeloop, 500, 200);
     mytimeloop._LastRunTime += 300;
     CHECK_EQUAL(MYTIMELOOP_Run(), 0);
