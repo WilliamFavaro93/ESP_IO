@@ -6,14 +6,14 @@ RUN apt update && \
     apt install -y wget build-essential autoconf automake libtool
     
 # Copy project into image
-RUN mkdir project/Test
-COPY src project/Test/src
-COPY tests project/Test/tests
-COPY Makefile project/Test/Makefile
+RUN mkdir /project
+COPY src /project/src
+COPY tests /project/tests
+COPY Makefile /project/Makefile
 
 # Download and build CppUTest
-RUN mkdir /project/Test/tools/ && \
-    cd /project/Test/ && \
+RUN mkdir /project/tools/ && \
+    cd /project/ && \
     wget https://github.com/cpputest/cpputest/releases/download/v4.0/cpputest-4.0.tar.gz && \
     tar xf cpputest-4.0.tar.gz && \
     mv cpputest-4.0/ tools/cpputest/ && \
